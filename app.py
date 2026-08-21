@@ -73,7 +73,7 @@ def load_reference_pairs(reference_path: Path) -> list[dict[str, str]]:
         response = ""
         for line in lines:
             label, content = split_label(line)
-            if not prompt and (is_prompt_label(label) or label is None):
+            if not prompt and is_prompt_label(label):
                 prompt = content
                 continue
             if prompt and not response and (is_response_label(label) or label is None):
