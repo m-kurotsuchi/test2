@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import secrets
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -10,6 +9,7 @@ from flask import Flask, jsonify, render_template, request
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_REFERENCE_FILE = BASE_DIR / "高難易度.txt"
+SIMILARITY_THRESHOLD = 0.08
 PROMPT_LABELS = {"医師", "ai", "doctor", "dr", "先生", "相手"}
 RESPONSE_LABELS = {"理想回答", "回答", "返答", "提案", "あなた", "自分", "私"}
 
@@ -127,7 +127,7 @@ def generate_reply(user_message: str, reference_pairs: list[dict[str, str]]) -> 
     )
 
     best_match = ranked_pairs[0] if ranked_pairs else None
-    if best_match and best_match["score"] >= 0.08:
+    if best_match and best_match["score"] >= SIMILARITY_THRESHOLD:
         reply = (
             "参考資料で近い会話が見つかりました。"
             f"\n- 近い発言: {best_match['prompt']}"
@@ -142,7 +142,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
     app.config.update(
         REFERENCE_FILE=DEFAULT_REFERENCE_FILE,
-        SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(16),
+        SECRET_KEY=os.environ.get("SECRET_KEY"),
     )
 
     if test_config:
@@ -172,9 +172,5 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     return app
 
-
-app = create_app()
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    create_app().run(host="0.0.0.0", port=5000, debug=False)
