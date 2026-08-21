@@ -66,6 +66,8 @@ def load_reference_pairs(reference_path: Path) -> list[dict[str, str]]:
         lines = clean_lines(block)
         if len(lines) < 2:
             continue
+        if not any(is_prompt_label(split_label(line)[0]) or is_response_label(split_label(line)[0]) for line in lines):
+            continue
 
         prompt = ""
         response = ""
@@ -149,11 +151,12 @@ def create_app(test_config: dict | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
-    app.config["REFERENCE_PAIRS"] = load_reference_pairs(Path(app.config["REFERENCE_FILE"]))
+    app.config["REFERENCE_FILE"] = Path(app.config["REFERENCE_FILE"])
+    app.config["REFERENCE_PAIRS"] = load_reference_pairs(app.config["REFERENCE_FILE"])
 
     @app.get("/")
     def index() -> str:
-        reference_path = Path(app.config["REFERENCE_FILE"])
+        reference_path = app.config["REFERENCE_FILE"]
         return render_template(
             "index.html",
             reference_file=reference_path.name,

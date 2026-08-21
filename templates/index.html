@@ -147,9 +147,12 @@
             body: JSON.stringify({ message })
           });
           const data = await response.json();
-          appendMessage(data.reply || data.error || "提案を生成できませんでした。", "assistant");
+          if (!response.ok) {
+            throw new Error(data.error || "提案を生成できませんでした。");
+          }
+          appendMessage(data.reply || "提案を生成できませんでした。", "assistant");
         } catch (error) {
-          appendMessage("通信に失敗しました。時間をおいて再度お試しください。", "assistant");
+          appendMessage(`エラー: ${error.message || "通信に失敗しました。時間をおいて再度お試しください。"}`, "assistant");
         } finally {
           button.disabled = false;
         }
