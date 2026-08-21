@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import os
 import re
+import secrets
 from pathlib import Path
-from typing import Iterable
 
 from flask import Flask, jsonify, render_template, request
 
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_REFERENCE_FILE = BASE_DIR / "高難易度.txt"
-PROMPT_LABELS = {"医師", "ai", "doctor", "dr", "dr.j", "先生", "相手"}
-RESPONSE_LABELS = {"理想回答", "回答", "返答", "提案", "あなた", "自分", "私", "mr"}
+PROMPT_LABELS = {"医師", "ai", "doctor", "dr", "先生", "相手"}
+RESPONSE_LABELS = {"理想回答", "回答", "返答", "提案", "あなた", "自分", "私"}
 
 
 def normalize_text(text: str) -> str:
@@ -96,7 +97,7 @@ def load_reference_pairs(reference_path: Path) -> list[dict[str, str]]:
     return pairs
 
 
-def fallback_reply(user_message: str, reference_pairs: Iterable[dict[str, str]]) -> str:
+def fallback_reply(user_message: str, reference_pairs: list[dict[str, str]]) -> str:
     if reference_pairs:
         example = next(iter(reference_pairs))
         return (
@@ -141,11 +142,13 @@ def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
     app.config.update(
         REFERENCE_FILE=DEFAULT_REFERENCE_FILE,
-        SECRET_KEY="dev",
+        SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(16),
     )
 
     if test_config:
         app.config.update(test_config)
+
+    app.config["REFERENCE_PAIRS"] = load_reference_pairs(Path(app.config["REFERENCE_FILE"]))
 
     @app.get("/")
     def index() -> str:
@@ -163,7 +166,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not user_message:
             return jsonify({"error": "message is required"}), 400
 
-        reference_pairs = load_reference_pairs(Path(app.config["REFERENCE_FILE"]))
+        reference_pairs = app.config["REFERENCE_PAIRS"]
         result = generate_reply(user_message, reference_pairs)
         return jsonify(result)
 
