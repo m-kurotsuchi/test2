@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -142,7 +143,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
     app.config.update(
         REFERENCE_FILE=DEFAULT_REFERENCE_FILE,
-        SECRET_KEY=os.environ.get("SECRET_KEY"),
+        SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(16),
     )
 
     if test_config:
@@ -173,4 +174,4 @@ def create_app(test_config: dict | None = None) -> Flask:
     return app
 
 if __name__ == "__main__":
-    create_app().run(host="0.0.0.0", port=5000, debug=False)
+    create_app().run(host="127.0.0.1", port=5000, debug=False)
