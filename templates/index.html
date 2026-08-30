@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>面会返答アシスタント</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f4f7fb;
+        color: #1f2937;
+      }
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px 16px 40px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }
+      .header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: #fff;
+      }
+      .header p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 14px;
+      }
+      .chat-log {
+        padding: 24px;
+        min-height: 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .message {
+        max-width: 80%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+      .message.user {
+        align-self: flex-end;
+        background: #dbeafe;
+      }
+      .message.assistant {
+        align-self: flex-start;
+        background: #eef2ff;
+      }
+      form {
+        display: grid;
+        gap: 12px;
+        padding: 0 24px 24px;
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 14px;
+        font: inherit;
+      }
+      button {
+        justify-self: end;
+        border: 0;
+        border-radius: 999px;
+        background: #2563eb;
+        color: #fff;
+        padding: 12px 18px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <div class="header">
+          <h1>面会返答アシスタント</h1>
+          <p>医師にこう言われた、という内容を入力すると参考ファイルをもとに返答例を提案します。</p>
+          <div class="status">
+            参照ファイル: {{ reference_file }}
+            {% if reference_loaded %}
+              （読み込み済み）
+            {% else %}
+              （未配置）
+            {% endif %}
+          </div>
+        </div>
+
+        <div id="chat-log" class="chat-log">
+          <div class="message assistant">こんにちは。医師から言われた内容を入力してください。参考資料に近い返答例を提案します。</div>
+        </div>
+
+        <form id="chat-form">
+          <label for="message">医師にこう言われた</label>
+          <textarea id="message" name="message" placeholder="例: この治療は必ず効くとは言えません、と言われた"></textarea>
+          <button type="submit">提案を受け取る</button>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById("chat-form");
+      const textarea = document.getElementById("message");
+      const chatLog = document.getElementById("chat-log");
+      const button = form.querySelector("button");
+
+      const appendMessage = (text, role) => {
+        const message = document.createElement("div");
+        message.className = `message ${role}`;
+        message.textContent = text;
+        chatLog.appendChild(message);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      };
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const message = textarea.value.trim();
+        if (!message) {
+          textarea.focus();
+          return;
+        }
+
+        appendMessage(message, "user");
+        textarea.value = "";
+        button.disabled = true;
+
+        try {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "提案を生成できませんでした。");
+          }
+          appendMessage(data.reply || "提案を生成できませんでした。", "assistant");
+        } catch (error) {
+          appendMessage(`エラー: ${error.message || "通信に失敗しました。時間をおいて再度お試しください。"}`, "assistant");
+        } finally {
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
